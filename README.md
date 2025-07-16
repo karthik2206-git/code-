@@ -1,6 +1,6 @@
-# Notepad++ Python Edition
+# Code++ Python Edition
 
-A modern, extensible Notepad++-like text/code editor built with PyQt6, QScintilla, and Git integration.
+A modern, extensible Notepad++ like text/code editor built with Git integration.
 
 ## Features
 
