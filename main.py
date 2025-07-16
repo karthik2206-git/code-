@@ -62,12 +62,13 @@ class CodePlusPlus(QMainWindow):
 
         # Git
         git_menu = menubar.addMenu("Git")
+        git_menu.addAction(self._make_action("Clone", self.git_clone))
         git_menu.addAction(self._make_action("Status", self.git_status))
         git_menu.addAction(self._make_action("Commit", self.git_commit))
         git_menu.addAction(self._make_action("Push", self.git_push))
         git_menu.addAction(self._make_action("Pull", self.git_pull))
         git_menu.addAction(self._make_action("Log", self.git_log))
-
+        
         # Settings
         settings_menu = menubar.addMenu("Settings")
         settings_menu.addAction(self._make_action("Preferences", self.settings_preferences))
@@ -223,6 +224,40 @@ class CodePlusPlus(QMainWindow):
             self.show_status("Toggled word wrap.")
 
     # --- Git Menu Actions ---
+    def git_clone(self):
+        # Ask for the repo URL
+        repo_url, ok = QInputDialog.getText(self, "Git Clone", "Enter repository URL:")
+        if not ok or not repo_url:
+            return
+
+        # Ask for destination folder
+        dest_dir = QFileDialog.getExistingDirectory(self, "Select Destination Folder")
+        if not dest_dir:
+            return
+
+        # Ask for username (optional)
+        username, uok = QInputDialog.getText(self, "Git Authentication", "Username (leave blank for anonymous):")
+        password = ""
+        if uok and username:
+            # Ask for password/token (masked)
+            password, pok = QInputDialog.getText(self, "Git Authentication", "Password or Token:", QLineEdit.Password)
+            if not pok:
+                return
+
+        # Prepare authenticated URL if needed
+        if username and password:
+            # Insert credentials into the URL (for HTTPS)
+            import re
+            repo_url = re.sub(r"^(https://)", r"\1{}:{}@".format(username, password), repo_url)
+
+        # Perform the clone
+        try:
+            from git import Repo
+            Repo.clone_from(repo_url, dest_dir)
+            QMessageBox.information(self, "Git Clone", "Repository cloned successfully to:\n" + dest_dir)
+        except Exception as e:
+            QMessageBox.critical(self, "Git Clone Error", str(e))
+    
     def git_status(self):
         status = self.git.status()
         QMessageBox.information(self, "Git Status", status)
