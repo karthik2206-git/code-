@@ -1,10 +1,15 @@
 import sys
 import os
-from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QFileDialog, QMessageBox, QStatusBar, QInputDialog
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QAction, QFileDialog, QMessageBox, QStatusBar,
+    QInputDialog, QSplitter, QTreeView, QFileSystemModel, QWidget, QVBoxLayout
+)
+from PyQt5.QtCore import Qt
 from tabmanager import TabManager
 from git_integration import GitManager
 from recentfiles import RecentFilesManager
 from themes import ThemeManager
+
 
 class CodePlusPlus(QMainWindow):
     def __init__(self):
@@ -12,8 +17,29 @@ class CodePlusPlus(QMainWindow):
         self.setWindowTitle("code++")
         self.setGeometry(100, 100, 900, 700)
 
+        # Main splitter for file tree and editor tabs
+        self.splitter = QSplitter(Qt.Horizontal)
+        self.setCentralWidget(self.splitter)
+
+        # --- File tree view area ---
+        self.file_model = QFileSystemModel()
+        self.file_model.setRootPath('')  # Set when folder opened
+
+        self.file_tree = QTreeView()
+        self.file_tree.setModel(self.file_model)
+        self.file_tree.setRootIsDecorated(True)
+        self.file_tree.hide()  # Hidden by default
+
+        # Connect double-click to opening files in the editor
+        self.file_tree.doubleClicked.connect(self.open_file_from_tree)
+
+        # Add the file tree to the splitter
+        self.splitter.addWidget(self.file_tree)
+        self.file_tree.setMaximumWidth(350)  # Set as needed
+
+        # --- Editor tab area ---
         self.tabs = TabManager(self)
-        self.setCentralWidget(self.tabs)
+        self.splitter.addWidget(self.tabs)
 
         self.git = GitManager()
         self.recent_files = RecentFilesManager(self)
@@ -33,7 +59,15 @@ class CodePlusPlus(QMainWindow):
         # File
         file_menu = menubar.addMenu("File")
         file_menu.addAction(self._make_action("New", self.file_new, "Ctrl+N"))
+        #Open File and Folder Sub-menu
         file_menu.addAction(self._make_action("Open...", self.file_open, "Ctrl+O"))
+        open_file_action = QAction("Open File...", self)
+        open_file_action.triggered.connect(self.file_open_file)
+        open_folder_action = QAction("Open Folder...", self)
+        open_folder_action.triggered.connect(self.file_open_folder)
+        file_menu.addAction(open_file_action)
+        file_menu.addAction(open_folder_action)
+        
         file_menu.addAction(self._make_action("Save", self.file_save, "Ctrl+S"))
         file_menu.addAction(self._make_action("Save As...", self.file_saveas, "Ctrl+Shift+S"))
         file_menu.addAction(self._make_action("Close", self.file_close, "Ctrl+W"))
@@ -117,6 +151,35 @@ class CodePlusPlus(QMainWindow):
                 self.show_status(f"Opened {path}")
             except Exception as e:
                 QMessageBox.critical(self, "Open Error", str(e))
+
+    def file_open_file(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Open File")
+        if path:
+            self.open_file_in_tab(path)
+
+    def file_open_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, "Open Folder")
+        if folder:
+            self.file_model.setRootPath(folder)
+            self.file_tree.setRootIndex(self.file_model.index(folder))
+            self.file_tree.show()
+            self.show_status(f"Opened folder: {folder}")
+
+    def open_file_from_tree(self, index):
+        path = self.file_model.filePath(index)
+        if os.path.isfile(path):
+            self.open_file_in_tab(path)
+
+    def open_file_in_tab(self, path):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                text = f.read()
+            editor = self.tabs.new_tab(filename=os.path.basename(path), text=text)
+            editor.file_path = path
+            self.recent_files.add_file(path)
+            self.show_status(f"Opened {path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Open Error", str(e))
 
     def file_save(self):
         editor = self.current_editor()
