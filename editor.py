@@ -1,6 +1,6 @@
 from PyQt5.Qsci import QsciScintilla, QsciLexerPython, QsciLexerCPP, QsciLexerHTML
 from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QColor   # <-- Add this import
+from PyQt5.QtGui import QColor
 
 class Editor(QsciScintilla):
     def __init__(self, parent=None, language='python'):
@@ -13,7 +13,7 @@ class Editor(QsciScintilla):
         self.setAutoIndent(True)
         self.setTabWidth(4)
         self.setCaretLineVisible(True)
-        self.setCaretLineBackgroundColor(QColor('#f0f0f0'))  # <-- Fixed
+        self.setCaretLineBackgroundColor(QColor('#f0f0f0'))
         self.setLexer(self._get_lexer(language))
         
     def _get_lexer(self, language):
